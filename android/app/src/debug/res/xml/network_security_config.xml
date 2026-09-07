@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Solo para el build de debug: permite tráfico HTTP sin TLS hacia el backend
+  local en desarrollo (Android bloquea cleartext por defecto desde API 28+).
+  El build de release NO incluye este archivo ni el permiso de red asociado.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- alias del host cuando se corre en el emulador de Android -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <!-- IP de esta compu en la red WiFi, usada por API_BASE_URL al correr en el celular -->
+        <domain includeSubdomains="false">192.168.0.12</domain>
+    </domain-config>
+</network-security-config>
