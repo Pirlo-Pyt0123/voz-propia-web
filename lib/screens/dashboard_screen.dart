@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/voice_profile.dart';
+import '../services/api_exception.dart';
 import '../services/auth_controller.dart';
 import '../theme/brutal_theme.dart';
 import '../widgets/brutal_background.dart';
@@ -9,8 +10,8 @@ import '../widgets/brutal_button.dart';
 import '../widgets/brutal_card.dart';
 import '../widgets/brutal_icon_button.dart';
 import '../widgets/brutal_text_field.dart';
-import 'evaluations_screen.dart';
 import 'recordings_screen.dart';
+import 'admin_screen.dart';
 import 'settings_screen.dart';
 import 'synthesis_screen.dart';
 
@@ -92,6 +93,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     if (name != null && name.isNotEmpty && mounted) {
       await context.read<AuthController>().createVoiceProfile(name);
+    }
+  }
+
+  Future<void> _confirmDeleteProfile(VoiceProfile profile) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: BrutalColors.ink.withValues(alpha: 0.55),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: brutalDecoration(
+              fill: BrutalColors.cream,
+              radius: 20,
+              borderWidth: 3,
+              shadowOffset: const Offset(7, 7),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '¿Borrar "${profile.profileName}"?',
+                  style: const TextStyle(color: BrutalColors.ink, fontSize: 20, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Se van a borrar todas sus grabaciones, el modelo de voz entrenado y '
+                  'las frases sintetizadas. No se puede deshacer.',
+                  style: TextStyle(color: BrutalColors.ink.withValues(alpha: 0.7), fontSize: 13.5),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text(
+                        'Cancelar',
+                        style: TextStyle(color: BrutalColors.ink, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text(
+                        'Borrar',
+                        style: TextStyle(color: BrutalColors.red, fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await context.read<AuthController>().deleteVoiceProfile(profile.id);
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
     }
   }
 
@@ -203,7 +274,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ...auth.voiceProfiles.map(
                     (p) => Padding(
                       padding: const EdgeInsets.only(bottom: 14),
-                      child: _VoiceProfileCard(profile: p),
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => RecordingsScreen(profile: p)),
+                        ),
+                        child: _VoiceProfileCard(
+                          profile: p,
+                          onDelete: () => _confirmDeleteProfile(p),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -227,8 +306,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         icon: Icons.mic_rounded,
                         label: 'Grabaciones',
                         fill: BrutalColors.green,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const RecordingsScreen()),
+                        onTap: () => _openWithFirstProfile(
+                          context,
+                          auth,
+                          (p) => RecordingsScreen(profile: p),
                         ),
                       ),
                     ),
@@ -238,39 +319,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         icon: Icons.record_voice_over_rounded,
                         label: 'Síntesis',
                         fill: BrutalColors.pink,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const SynthesisScreen()),
+                        onTap: () => _openWithFirstProfile(
+                          context,
+                          auth,
+                          (p) => SynthesisScreen(profile: p),
                         ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ComingSoonCard(
-                        icon: Icons.insights_rounded,
-                        label: 'Evaluaciones',
-                        fill: BrutalColors.purple,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const EvaluationsScreen()),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _ComingSoonCard(
-                        icon: Icons.settings_rounded,
-                        label: 'Ajustes',
-                        fill: BrutalColors.yellow,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                        ),
-                      ),
-                    ),
-                  ],
+                _ComingSoonCard(
+                  icon: Icons.settings_rounded,
+                  label: 'Ajustes',
+                  fill: BrutalColors.yellow,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  ),
                 ),
+                if (auth.currentUser?.roleName == 'administrator') ...[
+                  const SizedBox(height: 12),
+                  _ComingSoonCard(
+                    icon: Icons.admin_panel_settings_rounded,
+                    label: 'Administración',
+                    fill: BrutalColors.purple,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const AdminScreen()),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -280,10 +357,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
+void _openWithFirstProfile(
+  BuildContext context,
+  AuthController auth,
+  Widget Function(VoiceProfile) builder,
+) {
+  if (auth.voiceProfiles.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Creá un perfil de voz primero.')),
+    );
+    return;
+  }
+  Navigator.of(context).push(MaterialPageRoute(builder: (_) => builder(auth.voiceProfiles.first)));
+}
+
 class _VoiceProfileCard extends StatelessWidget {
   final VoiceProfile profile;
+  final VoidCallback onDelete;
 
-  const _VoiceProfileCard({required this.profile});
+  const _VoiceProfileCard({required this.profile, required this.onDelete});
 
   Color get _statusColor {
     switch (profile.trainingStatus) {
@@ -358,6 +450,11 @@ class _VoiceProfileCard extends StatelessWidget {
               _statusLabel,
               style: const TextStyle(color: BrutalColors.ink, fontSize: 12, fontWeight: FontWeight.w800),
             ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: onDelete,
+            child: Icon(Icons.delete_outline_rounded, color: BrutalColors.ink.withValues(alpha: 0.55), size: 22),
           ),
         ],
       ),

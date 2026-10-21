@@ -71,6 +71,29 @@ class AuthController extends ChangeNotifier {
     await refreshVoiceProfiles();
   }
 
+  Future<void> deleteVoiceProfile(int profileId) async {
+    await api.deleteVoiceProfile(profileId);
+    await refreshVoiceProfiles();
+  }
+
+  Future<void> updateProfile({String? name, String? email}) async {
+    final data = await api.updateMe(name: name, email: email);
+    currentUser = AppUser.fromJson(data);
+    notifyListeners();
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await api.changePassword(currentPassword: currentPassword, newPassword: newPassword);
+  }
+
+  Future<void> deleteAccount() async {
+    await api.deleteAccount();
+    await logout();
+  }
+
   Future<void> logout() async {
     await api.clearTokens();
     currentUser = null;

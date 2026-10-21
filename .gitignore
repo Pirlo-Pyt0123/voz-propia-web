@@ -46,3 +46,18 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# FVM Version Cache
+.fvm/
+
+# Video de presentación (HyperFrames) — no va en el repo de código
+/videos/
+
+# APKs de distribución — no van en el repo de código
+/dist/
+*.apk
+
+# Herramientas/configuración de agentes de IA — no es código de la app
+/.agents/
+/.claude/
+skills-lock.json

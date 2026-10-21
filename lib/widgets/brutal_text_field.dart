@@ -9,6 +9,8 @@ class BrutalTextField extends StatelessWidget {
   final bool obscureText;
   final Widget? suffixIcon;
   final TextInputType? keyboardType;
+  final int maxLines;
+  final ValueChanged<String>? onChanged;
 
   const BrutalTextField({
     super.key,
@@ -18,6 +20,8 @@ class BrutalTextField extends StatelessWidget {
     this.obscureText = false,
     this.suffixIcon,
     this.keyboardType,
+    this.maxLines = 1,
+    this.onChanged,
   });
 
   @override
@@ -31,6 +35,8 @@ class BrutalTextField extends StatelessWidget {
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
+      maxLines: maxLines,
+      onChanged: onChanged,
       style: const TextStyle(color: BrutalColors.ink, fontSize: 16, fontWeight: FontWeight.w600),
       cursorColor: BrutalColors.ink,
       decoration: InputDecoration(
